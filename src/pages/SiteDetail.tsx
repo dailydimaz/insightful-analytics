@@ -22,6 +22,7 @@ import {
   DeviceStats, 
   GeoStats,
   LanguageStats,
+  UTMStats,
   DateRangePicker,
   RealtimeStats,
   RealtimeActivityFeed,
@@ -41,6 +42,7 @@ import {
   useGeoStats,
   useCityStats,
   useLanguageStats,
+  useUTMStats,
   DateRange 
 } from "@/hooks/useAnalytics";
 
@@ -90,6 +92,10 @@ export default function SiteDetail() {
     dateRange 
   });
   const { data: languageStats, isLoading: languagesLoading } = useLanguageStats({ 
+    siteId: id || "", 
+    dateRange 
+  });
+  const { data: utmStats, isLoading: utmLoading } = useUTMStats({ 
     siteId: id || "", 
     dateRange 
   });
@@ -373,6 +379,9 @@ export default function SiteDetail() {
             devices={deviceStats?.devices}
             isLoading={devicesLoading}
           />
+
+          {/* UTM Campaign Stats */}
+          <UTMStats utmStats={utmStats} isLoading={utmLoading} />
 
           {/* Geo & Language Stats */}
           <div className="grid gap-6 lg:grid-cols-2">

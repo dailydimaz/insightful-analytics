@@ -85,6 +85,18 @@ export interface LanguageStat {
   percentage: number;
 }
 
+export interface UTMStat {
+  value: string;
+  visits: number;
+  percentage: number;
+}
+
+export interface UTMStats {
+  sources: UTMStat[];
+  mediums: UTMStat[];
+  campaigns: UTMStat[];
+}
+
 // Fetch overall stats
 export function useAnalyticsStats({ siteId, dateRange }: AnalyticsParams) {
   const { start, end } = getDateRangeFilter(dateRange);
@@ -466,6 +478,67 @@ export function useLanguageStats({ siteId, dateRange }: AnalyticsParams) {
         }))
         .sort((a, b) => b.visits - a.visits)
         .slice(0, 10);
+    },
+    enabled: !!siteId,
+  });
+}
+
+// Fetch UTM campaign stats
+export function useUTMStats({ siteId, dateRange }: AnalyticsParams) {
+  const { start, end } = getDateRangeFilter(dateRange);
+  
+  return useQuery({
+    queryKey: ["analytics-utm", siteId, dateRange],
+    queryFn: async (): Promise<UTMStats> => {
+      const { data: events, error } = await supabase
+        .from("events")
+        .select("properties")
+        .eq("site_id", siteId)
+        .eq("event_name", "pageview")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
+
+      if (error) throw error;
+
+      const sources = new Map<string, number>();
+      const mediums = new Map<string, number>();
+      const campaigns = new Map<string, number>();
+      let totalWithUTM = 0;
+      
+      events?.forEach(event => {
+        const props = event.properties as { utm?: { utm_source?: string; utm_medium?: string; utm_campaign?: string } } | null;
+        const utm = props?.utm;
+        
+        if (utm && (utm.utm_source || utm.utm_medium || utm.utm_campaign)) {
+          totalWithUTM++;
+          
+          if (utm.utm_source) {
+            sources.set(utm.utm_source, (sources.get(utm.utm_source) || 0) + 1);
+          }
+          if (utm.utm_medium) {
+            mediums.set(utm.utm_medium, (mediums.get(utm.utm_medium) || 0) + 1);
+          }
+          if (utm.utm_campaign) {
+            campaigns.set(utm.utm_campaign, (campaigns.get(utm.utm_campaign) || 0) + 1);
+          }
+        }
+      });
+
+      const toStats = (map: Map<string, number>): UTMStat[] => 
+        Array.from(map.entries())
+          .map(([value, visits]) => ({
+            value,
+            visits,
+            percentage: totalWithUTM > 0 ? (visits / totalWithUTM) * 100 : 0,
+          }))
+          .sort((a, b) => b.visits - a.visits)
+          .slice(0, 10);
+
+      return {
+        sources: toStats(sources),
+        mediums: toStats(mediums),
+        campaigns: toStats(campaigns),
+      };
     },
     enabled: !!siteId,
   });
