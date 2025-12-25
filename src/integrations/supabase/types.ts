@@ -73,6 +73,47 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          match_type: string
+          name: string
+          site_id: string
+          updated_at: string
+          url_match: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          match_type?: string
+          name: string
+          site_id: string
+          updated_at?: string
+          url_match?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          match_type?: string
+          name?: string
+          site_id?: string
+          updated_at?: string
+          url_match?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

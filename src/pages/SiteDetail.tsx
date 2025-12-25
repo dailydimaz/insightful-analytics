@@ -12,7 +12,6 @@ import {
   Trash2, 
   Settings,
   Code,
-  BarChart3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -22,7 +21,13 @@ import {
   TopReferrers, 
   DeviceStats, 
   GeoStats,
-  DateRangePicker 
+  DateRangePicker,
+  RealtimeStats,
+  RealtimeActivityFeed,
+  CustomEvents,
+  ExportButton,
+  GoalsCard,
+  GoalSetup,
 } from "@/components/analytics";
 import { 
   useAnalyticsStats, 
@@ -46,6 +51,7 @@ export default function SiteDetail() {
   const [editDomain, setEditDomain] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>("7d");
+  const [showGoalSetup, setShowGoalSetup] = useState(false);
 
   const site = sites.find((s) => s.id === id);
 
@@ -192,6 +198,7 @@ export default function SiteDetail() {
             </p>
           </div>
           <div className="flex gap-2">
+            <ExportButton siteId={site.id} siteName={site.name} dateRange={dateRange} />
             <DateRangePicker value={dateRange} onChange={setDateRange} />
             {isEditing ? (
               <>
@@ -314,6 +321,12 @@ export default function SiteDetail() {
 
         {/* Analytics Dashboard */}
         <div className="space-y-6">
+          {/* Real-time Section */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RealtimeStats siteId={site.id} />
+            <RealtimeActivityFeed siteId={site.id} />
+          </div>
+
           {/* Stats Overview */}
           <StatsCards stats={stats} isLoading={statsLoading} />
 
@@ -324,6 +337,16 @@ export default function SiteDetail() {
           <div className="grid gap-6 lg:grid-cols-2">
             <TopPages pages={topPages} isLoading={pagesLoading} />
             <TopReferrers referrers={topReferrers} isLoading={referrersLoading} />
+          </div>
+
+          {/* Goals & Custom Events */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <GoalsCard 
+              siteId={site.id} 
+              dateRange={dateRange} 
+              onCreateGoal={() => setShowGoalSetup(true)} 
+            />
+            <CustomEvents siteId={site.id} dateRange={dateRange} />
           </div>
 
           {/* Device Stats */}
@@ -338,6 +361,14 @@ export default function SiteDetail() {
           <GeoStats countries={geoStats} isLoading={geoLoading} />
         </div>
       </div>
+
+      {/* Goal Setup Modal */}
+      {showGoalSetup && (
+        <GoalSetup 
+          siteId={site.id} 
+          onClose={() => setShowGoalSetup(false)} 
+        />
+      )}
     </DashboardLayout>
   );
 }
