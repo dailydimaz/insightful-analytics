@@ -127,6 +127,7 @@ export type Database = {
           device_type: string | null
           event_name: string
           id: string
+          language: string | null
           os: string | null
           properties: Json | null
           referrer: string | null
@@ -143,6 +144,7 @@ export type Database = {
           device_type?: string | null
           event_name?: string
           id?: string
+          language?: string | null
           os?: string | null
           properties?: Json | null
           referrer?: string | null
@@ -159,6 +161,7 @@ export type Database = {
           device_type?: string | null
           event_name?: string
           id?: string
+          language?: string | null
           os?: string | null
           properties?: Json | null
           referrer?: string | null

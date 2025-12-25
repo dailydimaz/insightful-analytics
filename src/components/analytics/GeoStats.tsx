@@ -1,8 +1,10 @@
-import { MapPin } from "lucide-react";
-import { GeoStat } from "@/hooks/useAnalytics";
+import { useState } from "react";
+import { MapPin, Building2 } from "lucide-react";
+import { GeoStat, CityStat } from "@/hooks/useAnalytics";
 
 interface GeoStatsProps {
   countries: GeoStat[] | undefined;
+  cities: CityStat[] | undefined;
   isLoading: boolean;
 }
 
@@ -52,13 +54,31 @@ function getCountryName(code: string): string {
   return countryNames[code.toUpperCase()] || code;
 }
 
-export function GeoStats({ countries, isLoading }: GeoStatsProps) {
+export function GeoStats({ countries, cities, isLoading }: GeoStatsProps) {
+  const [activeTab, setActiveTab] = useState<"countries" | "cities">("countries");
+
   return (
     <div className="card bg-base-200">
       <div className="card-body">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-base-content/70" />
-          <h3 className="card-title text-sm font-medium">Top Countries</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-base-content/70" />
+            <h3 className="card-title text-sm font-medium">Locations</h3>
+          </div>
+          <div className="tabs tabs-boxed tabs-sm">
+            <button 
+              className={`tab ${activeTab === "countries" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("countries")}
+            >
+              Countries
+            </button>
+            <button 
+              className={`tab ${activeTab === "cities" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("cities")}
+            >
+              Cities
+            </button>
+          </div>
         </div>
         
         {isLoading ? (
@@ -73,34 +93,69 @@ export function GeoStats({ countries, isLoading }: GeoStatsProps) {
               </div>
             ))}
           </div>
-        ) : countries && countries.length > 0 ? (
-          <div className="space-y-2 mt-4">
-            {countries.map((country, index) => (
-              <div key={index} className="relative">
-                <div 
-                  className="absolute inset-0 bg-primary/10 rounded"
-                  style={{ width: `${country.percentage}%` }}
-                />
-                <div className="relative flex items-center justify-between py-2 px-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{getCountryFlag(country.country)}</span>
-                    <span className="text-sm">{getCountryName(country.country)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{country.visits}</span>
-                    <span className="text-xs text-base-content/60 w-12 text-right">
-                      {country.percentage.toFixed(1)}%
-                    </span>
+        ) : activeTab === "countries" ? (
+          countries && countries.length > 0 ? (
+            <div className="space-y-2 mt-4">
+              {countries.map((country, index) => (
+                <div key={index} className="relative">
+                  <div 
+                    className="absolute inset-0 bg-primary/10 rounded"
+                    style={{ width: `${country.percentage}%` }}
+                  />
+                  <div className="relative flex items-center justify-between py-2 px-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getCountryFlag(country.country)}</span>
+                      <span className="text-sm">{getCountryName(country.country)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">{country.visits}</span>
+                      <span className="text-xs text-base-content/60 w-12 text-right">
+                        {country.percentage.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-base-content/50">
+              <MapPin className="h-8 w-8 mb-2" />
+              <p>No country data yet</p>
+            </div>
+          )
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-base-content/50">
-            <MapPin className="h-8 w-8 mb-2" />
-            <p>No location data yet</p>
-          </div>
+          cities && cities.length > 0 ? (
+            <div className="space-y-2 mt-4">
+              {cities.map((city, index) => (
+                <div key={index} className="relative">
+                  <div 
+                    className="absolute inset-0 bg-secondary/10 rounded"
+                    style={{ width: `${city.percentage}%` }}
+                  />
+                  <div className="relative flex items-center justify-between py-2 px-3">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-base-content/70" />
+                      <span className="text-sm">{city.city}</span>
+                      <span className="text-xs text-base-content/50">
+                        {getCountryFlag(city.country)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">{city.visits}</span>
+                      <span className="text-xs text-base-content/60 w-12 text-right">
+                        {city.percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-base-content/50">
+              <Building2 className="h-8 w-8 mb-2" />
+              <p>No city data yet</p>
+            </div>
+          )
         )}
       </div>
     </div>

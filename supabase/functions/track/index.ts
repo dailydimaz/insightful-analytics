@@ -84,6 +84,10 @@ serve(async (req) => {
                      req.headers.get('x-forwarded-for')?.split(',')[0] || 
                      req.headers.get('x-real-ip') || 
                      'unknown';
+    
+    // Get Accept-Language header and extract primary language
+    const acceptLanguage = req.headers.get('accept-language') || '';
+    const primaryLanguage = acceptLanguage.split(',')[0]?.split('-')[0]?.trim() || null;
 
     // Parse user agent
     const { browser, os, device_type } = parseUserAgent(userAgent);
@@ -134,6 +138,7 @@ serve(async (req) => {
         device_type,
         country: cfCountry,
         city: cfCity,
+        language: primaryLanguage,
         properties,
       });
 

@@ -4,6 +4,7 @@ export { TopPages } from "./TopPages";
 export { TopReferrers } from "./TopReferrers";
 export { DeviceStats } from "./DeviceStats";
 export { GeoStats } from "./GeoStats";
+export { LanguageStats } from "./LanguageStats";
 export { DateRangePicker } from "./DateRangePicker";
 export { RealtimeStats } from "./RealtimeStats";
 export { RealtimeActivityFeed } from "./RealtimeActivityFeed";

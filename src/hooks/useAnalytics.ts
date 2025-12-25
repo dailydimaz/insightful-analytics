@@ -72,6 +72,19 @@ export interface GeoStat {
   percentage: number;
 }
 
+export interface CityStat {
+  city: string;
+  country: string;
+  visits: number;
+  percentage: number;
+}
+
+export interface LanguageStat {
+  language: string;
+  visits: number;
+  percentage: number;
+}
+
 // Fetch overall stats
 export function useAnalyticsStats({ siteId, dateRange }: AnalyticsParams) {
   const { start, end } = getDateRangeFilter(dateRange);
@@ -331,7 +344,7 @@ export function useDeviceStats({ siteId, dateRange }: AnalyticsParams) {
   });
 }
 
-// Fetch geo stats
+// Fetch geo stats (countries)
 export function useGeoStats({ siteId, dateRange }: AnalyticsParams) {
   const { start, end } = getDateRangeFilter(dateRange);
   
@@ -361,6 +374,93 @@ export function useGeoStats({ siteId, dateRange }: AnalyticsParams) {
       return Array.from(byCountry.entries())
         .map(([country, visits]) => ({
           country,
+          visits,
+          percentage: total > 0 ? (visits / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 10);
+    },
+    enabled: !!siteId,
+  });
+}
+
+// Fetch city stats
+export function useCityStats({ siteId, dateRange }: AnalyticsParams) {
+  const { start, end } = getDateRangeFilter(dateRange);
+  
+  return useQuery({
+    queryKey: ["analytics-cities", siteId, dateRange],
+    queryFn: async (): Promise<CityStat[]> => {
+      const { data: events, error } = await supabase
+        .from("events")
+        .select("city, country")
+        .eq("site_id", siteId)
+        .eq("event_name", "pageview")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString())
+        .not("city", "is", null);
+
+      if (error) throw error;
+
+      const total = events?.length || 0;
+      const byCity = new Map<string, { country: string; visits: number }>();
+      
+      events?.forEach(event => {
+        if (event.city) {
+          const key = `${event.city}|${event.country || 'Unknown'}`;
+          const existing = byCity.get(key);
+          if (existing) {
+            existing.visits++;
+          } else {
+            byCity.set(key, { country: event.country || 'Unknown', visits: 1 });
+          }
+        }
+      });
+
+      return Array.from(byCity.entries())
+        .map(([key, data]) => ({
+          city: key.split('|')[0],
+          country: data.country,
+          visits: data.visits,
+          percentage: total > 0 ? (data.visits / total) * 100 : 0,
+        }))
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 10);
+    },
+    enabled: !!siteId,
+  });
+}
+
+// Fetch language stats
+export function useLanguageStats({ siteId, dateRange }: AnalyticsParams) {
+  const { start, end } = getDateRangeFilter(dateRange);
+  
+  return useQuery({
+    queryKey: ["analytics-languages", siteId, dateRange],
+    queryFn: async (): Promise<LanguageStat[]> => {
+      const { data: events, error } = await supabase
+        .from("events")
+        .select("language")
+        .eq("site_id", siteId)
+        .eq("event_name", "pageview")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString())
+        .not("language", "is", null);
+
+      if (error) throw error;
+
+      const total = events?.length || 0;
+      const byLanguage = new Map<string, number>();
+      
+      events?.forEach(event => {
+        if (event.language) {
+          byLanguage.set(event.language, (byLanguage.get(event.language) || 0) + 1);
+        }
+      });
+
+      return Array.from(byLanguage.entries())
+        .map(([language, visits]) => ({
+          language,
           visits,
           percentage: total > 0 ? (visits / total) * 100 : 0,
         }))

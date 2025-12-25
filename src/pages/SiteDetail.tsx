@@ -21,6 +21,7 @@ import {
   TopReferrers, 
   DeviceStats, 
   GeoStats,
+  LanguageStats,
   DateRangePicker,
   RealtimeStats,
   RealtimeActivityFeed,
@@ -38,6 +39,8 @@ import {
   useTopReferrers, 
   useDeviceStats, 
   useGeoStats,
+  useCityStats,
+  useLanguageStats,
   DateRange 
 } from "@/hooks/useAnalytics";
 
@@ -79,6 +82,14 @@ export default function SiteDetail() {
     dateRange 
   });
   const { data: geoStats, isLoading: geoLoading } = useGeoStats({ 
+    siteId: id || "", 
+    dateRange 
+  });
+  const { data: cityStats, isLoading: citiesLoading } = useCityStats({ 
+    siteId: id || "", 
+    dateRange 
+  });
+  const { data: languageStats, isLoading: languagesLoading } = useLanguageStats({ 
     siteId: id || "", 
     dateRange 
   });
@@ -363,8 +374,18 @@ export default function SiteDetail() {
             isLoading={devicesLoading}
           />
 
-          {/* Geo Stats */}
-          <GeoStats countries={geoStats} isLoading={geoLoading} />
+          {/* Geo & Language Stats */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <GeoStats 
+              countries={geoStats} 
+              cities={cityStats} 
+              isLoading={geoLoading || citiesLoading} 
+            />
+            <LanguageStats 
+              languages={languageStats} 
+              isLoading={languagesLoading} 
+            />
+          </div>
         </div>
       </div>
 
