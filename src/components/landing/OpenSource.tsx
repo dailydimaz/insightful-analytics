@@ -49,7 +49,7 @@ export function OpenSource() {
           {/* CTA */}
           <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a 
-              href="https://github.com/yourusername/metric" 
+              href="https://github.com/dailydimaz/metric" 
               target="_blank" 
               rel="noopener noreferrer"
               className="btn btn-outline gap-2"
@@ -58,7 +58,7 @@ export function OpenSource() {
               View on GitHub
             </a>
             <a 
-              href="https://github.com/yourusername/metric/blob/main/CONTRIBUTING.md" 
+              href="https://github.com/dailydimaz/metric/blob/main/CONTRIBUTING.md"
               target="_blank" 
               rel="noopener noreferrer"
               className="btn btn-ghost gap-2"

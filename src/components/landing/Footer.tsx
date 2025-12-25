@@ -10,17 +10,17 @@ const footerLinks = {
   resources: [
     { label: "Documentation", href: "#" },
     { label: "API Reference", href: "#" },
-    { label: "GitHub", href: "https://github.com/yourusername/metric", external: true },
+    { label: "GitHub", href: "https://github.com/dailydimaz/metric", external: true },
   ],
   community: [
-    { label: "Contributing", href: "https://github.com/yourusername/metric/blob/main/CONTRIBUTING.md", external: true },
-    { label: "Discussions", href: "https://github.com/yourusername/metric/discussions", external: true },
-    { label: "Issues", href: "https://github.com/yourusername/metric/issues", external: true },
+    { label: "Contributing", href: "https://github.com/dailydimaz/metric/blob/main/CONTRIBUTING.md", external: true },
+    { label: "Discussions", href: "https://github.com/dailydimaz/metric/discussions", external: true },
+    { label: "Issues", href: "https://github.com/dailydimaz/metric/issues", external: true },
   ],
   legal: [
     { label: "Privacy Policy", href: "#" },
     { label: "Terms of Service", href: "#" },
-    { label: "MIT License", href: "https://github.com/yourusername/metric/blob/main/LICENSE", external: true },
+    { label: "MIT License", href: "https://github.com/dailydimaz/metric/blob/main/LICENSE", external: true },
   ],
 };
 
