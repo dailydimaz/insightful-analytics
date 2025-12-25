@@ -1,15 +1,15 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Save, Lock, Camera, Trash2, Shield, Key, AlertTriangle } from "lucide-react";
+import { User, Mail, Save, Lock, Trash2, Shield, Key, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -35,12 +35,10 @@ export default function Settings() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // Form states
   const [fullName, setFullName] = useState("");
@@ -110,105 +108,6 @@ export default function Settings() {
     setSaving(false);
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload an image file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please upload an image smaller than 2MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploadingAvatar(true);
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      // Update profile with avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: `${publicUrl}?t=${Date.now()}` })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      await fetchProfile();
-      toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been updated",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
-  const handleRemoveAvatar = async () => {
-    if (!user || !profile?.avatar_url) return;
-
-    setUploadingAvatar(true);
-    try {
-      // Remove from storage
-      const { error: deleteError } = await supabase.storage
-        .from('avatars')
-        .remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`, `${user.id}/avatar.webp`]);
-
-      // Update profile to remove avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      await fetchProfile();
-      toast({
-        title: "Avatar removed",
-        description: "Your profile picture has been removed",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to remove avatar",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
 
   const handleChangeEmail = async () => {
     if (!newEmail || newEmail === user?.email) {
@@ -373,52 +272,27 @@ export default function Settings() {
           <p className="text-muted-foreground">Manage your account settings and preferences</p>
         </div>
 
-        {/* Profile Picture Section */}
+        {/* Profile Avatar Display */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Profile Picture
+              <User className="h-5 w-5" />
+              Profile Avatar
             </CardTitle>
             <CardDescription>
-              Upload a profile picture to personalize your account
+              Your avatar is generated from your initials
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={profile?.avatar_url || undefined} alt="Profile" />
-                <AvatarFallback className="text-2xl">{userInitials}</AvatarFallback>
+                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                  {userInitials}
+                </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleAvatarUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                >
-                  {uploadingAvatar ? "Uploading..." : "Upload new picture"}
-                </Button>
-                {profile?.avatar_url && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRemoveAvatar}
-                    disabled={uploadingAvatar}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove picture
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  JPG, PNG or WebP. Max 2MB.
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Your avatar displays your initials based on your name.
                 </p>
               </div>
             </div>
