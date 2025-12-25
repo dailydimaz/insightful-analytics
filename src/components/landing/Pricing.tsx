@@ -61,58 +61,6 @@ const tiers = [
 export function Pricing() {
   const selfHosted = isSelfHosted();
 
-  // Show self-hosted banner if no Stripe key
-  if (selfHosted) {
-    return (
-      <section id="pricing" className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Self-Hosted Mode
-            </h2>
-            <p className="mt-4 text-lg text-base-content/70">
-              You're running Metric on your own infrastructure with all features unlocked.
-            </p>
-          </div>
-
-          <div className="mt-16 max-w-lg mx-auto">
-            <div className="card border border-primary bg-base-100 shadow-xl shadow-primary/10">
-              <div className="card-body text-center">
-                <Badge variant="secondary" className="self-center mb-4">
-                  <Server className="w-3 h-3 mr-1" />
-                  Self-Hosted
-                </Badge>
-                
-                <h3 className="text-2xl font-bold">Unlimited Everything</h3>
-                <p className="text-base-content/70 mb-6">
-                  All features are available with no restrictions
-                </p>
-
-                <ul className="space-y-3 text-left mb-6">
-                  {PLANS.selfhosted.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm">
-                      <Check className="h-4 w-4 text-success flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <Infinity className="w-5 h-5" />
-                  <span className="font-semibold">No limits, no billing</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-12 text-center text-sm text-base-content/70">
-            Want managed hosting? Check out our <a href="#" className="link link-primary">cloud offering</a>.
-          </p>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section id="pricing" className="py-24">
       <div className="container mx-auto px-4">
@@ -181,6 +129,52 @@ export function Pricing() {
         <p className="mt-12 text-center text-sm text-base-content/70">
           Need more than 1M events? <a href="#" className="link link-primary">Contact us</a> for custom pricing.
         </p>
+
+        {/* Self-hosted option */}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <div className="card border border-base-300 bg-base-100/50">
+            <div className="card-body flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Server className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold flex items-center gap-2">
+                    Self-Hosted
+                    <Badge variant="outline" className="text-xs">Open Source</Badge>
+                  </h3>
+                  <p className="text-sm text-base-content/70">
+                    Deploy on your own infrastructure with unlimited everything
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-primary">
+                    <Infinity className="w-4 h-4" />
+                    <span className="font-semibold">Free forever</span>
+                  </div>
+                </div>
+                <a 
+                  href="https://github.com/user/metric" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline btn-sm"
+                >
+                  View on GitHub
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selfHosted && (
+          <div className="mt-8 p-4 rounded-lg bg-primary/5 border border-primary/20 max-w-2xl mx-auto">
+            <p className="text-center text-sm text-primary">
+              <strong>You're currently running in self-hosted mode</strong> — all features are unlocked with no limits.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
