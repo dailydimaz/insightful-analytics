@@ -29,6 +29,10 @@ import { EmailPreferences } from "@/components/settings/EmailPreferences";
 import { DataExport } from "@/components/settings/DataExport";
 import { LoginHistory } from "@/components/settings/LoginHistory";
 import { UsageCard, PlanCard } from "@/components/billing";
+import { ApiKeysCard } from "@/components/settings/ApiKeysCard";
+import { TeamCard } from "@/components/settings/TeamCard";
+import { CustomDashboardsCard } from "@/components/settings/CustomDashboardsCard";
+import { SlackIntegrationCard } from "@/components/settings/SlackIntegrationCard";
 
 interface Profile {
   id: string;
