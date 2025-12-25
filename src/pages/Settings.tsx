@@ -434,6 +434,18 @@ export default function Settings() {
           <UsageCard />
         </div>
 
+        {/* API Access - Pro/Business only */}
+        <ApiKeysCard />
+
+        {/* Team Collaboration - Business only */}
+        <TeamCard />
+
+        {/* Custom Dashboards - Business only */}
+        <CustomDashboardsCard />
+
+        {/* Slack Integration - Business only */}
+        <SlackIntegrationCard />
+
         {/* Email Preferences */}
         <EmailPreferences />
 
