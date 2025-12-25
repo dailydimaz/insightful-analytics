@@ -56,7 +56,7 @@ Metric can be self-hosted using Supabase as the backend.
 
 ```bash
 # Clone the repository
-git clone https://github.com/dailydimaz/metric.git
+git clone https://github.com/dailydimaz/insightful-analytics.git
 cd metric
 
 # Install dependencies
