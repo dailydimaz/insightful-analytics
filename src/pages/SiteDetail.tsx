@@ -29,6 +29,7 @@ import {
   GoalsCard,
   GoalSetup,
   FunnelList,
+  RetentionCard,
 } from "@/components/analytics";
 import { 
   useAnalyticsStats, 
@@ -343,13 +344,14 @@ export default function SiteDetail() {
           {/* Funnels */}
           <FunnelList siteId={site.id} />
 
-          {/* Goals & Custom Events */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          {/* Goals, Retention & Custom Events */}
+          <div className="grid gap-6 lg:grid-cols-3">
             <GoalsCard 
               siteId={site.id} 
               dateRange={dateRange} 
               onCreateGoal={() => setShowGoalSetup(true)} 
             />
+            <RetentionCard siteId={site.id} dateRange={dateRange} />
             <CustomEvents siteId={site.id} dateRange={dateRange} />
           </div>
 

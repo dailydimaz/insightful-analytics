@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import SiteDetail from "./pages/SiteDetail";
 import FunnelDetail from "./pages/FunnelDetail";
+import Retention from "./pages/Retention";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/sites/:id" element={<SiteDetail />} />
           <Route path="/dashboard/funnels/:funnelId" element={<FunnelDetail />} />
+          <Route path="/dashboard/retention" element={<Retention />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

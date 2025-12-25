@@ -14,3 +14,6 @@ export { GoalSetup } from "./GoalSetup";
 export { FunnelBuilder } from "./FunnelBuilder";
 export { FunnelChart } from "./FunnelChart";
 export { FunnelList } from "./FunnelList";
+export { RetentionMatrix } from "./RetentionMatrix";
+export { RetentionChart } from "./RetentionChart";
+export { RetentionCard } from "./RetentionCard";
