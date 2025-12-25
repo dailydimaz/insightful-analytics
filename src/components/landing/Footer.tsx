@@ -10,12 +10,17 @@ const footerLinks = {
   resources: [
     { label: "Documentation", href: "#" },
     { label: "API Reference", href: "#" },
-    { label: "Status", href: "#", external: true },
+    { label: "GitHub", href: "https://github.com/yourusername/metric", external: true },
+  ],
+  community: [
+    { label: "Contributing", href: "https://github.com/yourusername/metric/blob/main/CONTRIBUTING.md", external: true },
+    { label: "Discussions", href: "https://github.com/yourusername/metric/discussions", external: true },
+    { label: "Issues", href: "https://github.com/yourusername/metric/issues", external: true },
   ],
   legal: [
     { label: "Privacy Policy", href: "#" },
     { label: "Terms of Service", href: "#" },
-    { label: "GDPR", href: "#" },
+    { label: "MIT License", href: "https://github.com/yourusername/metric/blob/main/LICENSE", external: true },
   ],
 };
 
@@ -69,7 +74,7 @@ export function Footer() {
           </div>
 
           {/* Links Grid */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
+          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-8">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-4">
                 Product
@@ -112,6 +117,28 @@ export function Footer() {
 
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-4">
+                Community
+              </h3>
+              <ul className="space-y-3">
+                {footerLinks.community.map((link) => (
+                  <li key={link.label}>
+                    <a 
+                      href={link.href} 
+                      className="text-base-content/70 hover:text-primary transition-colors inline-flex items-center gap-1 group"
+                      {...(link.external && { target: "_blank", rel: "noopener noreferrer" })}
+                    >
+                      {link.label}
+                      {link.external && (
+                        <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 transition-all" />
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-4">
                 Legal
               </h3>
               <ul className="space-y-3">
@@ -119,9 +146,13 @@ export function Footer() {
                   <li key={link.label}>
                     <a 
                       href={link.href} 
-                      className="text-base-content/70 hover:text-primary transition-colors"
+                      className="text-base-content/70 hover:text-primary transition-colors inline-flex items-center gap-1 group"
+                      {...(link.external && { target: "_blank", rel: "noopener noreferrer" })}
                     >
                       {link.label}
+                      {link.external && (
+                        <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 transition-all" />
+                      )}
                     </a>
                   </li>
                 ))}

@@ -1,73 +1,156 @@
-# Welcome to your Lovable project
+<p align="center">
+  <img src="public/favicon.ico" alt="Metric Logo" width="80" height="80">
+</p>
 
-## Project info
+<h1 align="center">Metric</h1>
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+<p align="center">
+  <strong>Privacy-first, open-source web analytics</strong>
+</p>
 
-## How can I edit this code?
+<p align="center">
+  Simple, fast, and privacy-focused analytics for your websites and applications.
+  <br />
+  No cookies. GDPR compliant. Self-hostable.
+</p>
 
-There are several ways of editing your application.
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#self-hosting">Self-Hosting</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## ✨ Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Privacy-First**: No cookies, no personal data collection, GDPR/CCPA compliant
+- **Lightweight**: < 1KB tracking script, zero impact on Core Web Vitals
+- **Real-time Analytics**: See visitors on your site as it happens
+- **Custom Events**: Track button clicks, form submissions, and any custom events
+- **Funnel Analysis**: Understand your conversion funnel and optimize user flow
+- **Retention Cohorts**: Track user retention over time
+- **Open Source**: MIT licensed, self-hostable, fully transparent
 
-**Use your preferred IDE**
+## 🚀 Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Quick Start (Cloud)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Visit [metric.example.com](https://metric.example.com) and sign up
+2. Add your first website
+3. Copy the tracking script to your site's `<head>` tag
+4. Start collecting insights!
 
-Follow these steps:
+### Self-Hosting
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Metric can be self-hosted using Supabase as the backend.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+#### Prerequisites
 
-# Step 3: Install the necessary dependencies.
-npm i
+- Node.js 18+
+- A [Supabase](https://supabase.com) account (free tier works)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+#### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/metric.git
+cd metric
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env
+
+# Configure your Supabase credentials in .env
+# VITE_SUPABASE_PROJECT_ID=your-project-id
+# VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+# VITE_SUPABASE_URL=https://your-project-id.supabase.co
+
+# Run database migrations
+# (Apply the SQL files in supabase/migrations/ to your Supabase project)
+
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+#### Production Deployment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+# Build for production
+npm run build
 
-**Use GitHub Codespaces**
+# Preview production build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Deploy the `dist/` folder to any static hosting provider:
+- Vercel
+- Netlify
+- Cloudflare Pages
+- GitHub Pages
+- Your own server
 
-## What technologies are used for this project?
+## 📊 Usage
 
-This project is built with:
+### Adding the Tracking Script
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Add this script to your website's `<head>` tag:
 
-## How can I deploy this project?
+```html
+<script defer src="https://your-metric-instance.com/track.js" data-site="YOUR_TRACKING_ID"></script>
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Tracking Custom Events
 
-## Can I connect a custom domain to my Lovable project?
+```javascript
+// Track a custom event
+metric.track('button_click', { button_id: 'cta-hero' });
 
-Yes, you can!
+// Track a form submission
+metric.track('form_submit', { form_name: 'newsletter' });
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🏗️ Tech Stack
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **Frontend**: React, TypeScript, Vite
+- **Styling**: Tailwind CSS, DaisyUI, shadcn/ui
+- **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
+- **State Management**: TanStack Query
+
+## 🤝 Contributing
+
+We love contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+```
+
+## 📄 License
+
+Metric is open-source software licensed under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+Inspired by [Umami](https://umami.is), [Plausible](https://plausible.io), and other privacy-focused analytics tools.
+
+---
+
+<p align="center">
+  Made with ❤️ for privacy
+</p>
