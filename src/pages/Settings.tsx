@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Save } from "lucide-react";
+import { User, Mail, Save, Lock, Camera, Trash2, Shield, Key } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
 interface Profile {
   id: string;
@@ -17,10 +23,23 @@ export default function Settings() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  // Form states
   const [fullName, setFullName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // Action states
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,6 +50,7 @@ export default function Settings() {
   useEffect(() => {
     if (user) {
       fetchProfile();
+      setNewEmail(user.email || "");
     }
   }, [user]);
 
@@ -47,12 +67,12 @@ export default function Settings() {
       console.error("Error fetching profile:", error);
     } else {
       setProfile(data);
-      setFullName(data.full_name || "");
+      setFullName(data?.full_name || "");
     }
     setLoading(false);
   };
 
-  const handleSave = async () => {
+  const handleSaveProfile = async () => {
     if (!user) return;
     
     setSaving(true);
@@ -76,10 +96,200 @@ export default function Settings() {
     setSaving(false);
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: `${publicUrl}?t=${Date.now()}` })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user || !profile?.avatar_url) return;
+
+    setUploadingAvatar(true);
+    try {
+      // Remove from storage
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`, `${user.id}/avatar.webp`]);
+
+      // Update profile to remove avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Avatar removed",
+        description: "Your profile picture has been removed",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to remove avatar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail || newEmail === user?.email) {
+      toast({
+        title: "No changes",
+        description: "Please enter a different email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Confirmation email sent",
+        description: "Please check both your old and new email addresses to confirm the change",
+      });
+    }
+    setChangingEmail(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all password fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirmation must match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setChangingPassword(false);
+  };
+
+  const handleSignOutAllDevices = async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate("/auth");
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -88,84 +298,259 @@ export default function Settings() {
     return null;
   }
 
+  const userInitials = profile?.full_name
+    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()
+    : user.email?.charAt(0).toUpperCase() || 'U';
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-2xl">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-base-content/70">Manage your account settings</p>
+          <p className="text-muted-foreground">Manage your account settings and preferences</p>
         </div>
 
-        {/* Profile Section */}
-        <div className="card bg-base-200">
-          <div className="card-body">
-            <h2 className="card-title">
+        {/* Profile Picture Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Profile Picture
+            </CardTitle>
+            <CardDescription>
+              Upload a profile picture to personalize your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-6">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={profile?.avatar_url || undefined} alt="Profile" />
+                <AvatarFallback className="text-2xl">{userInitials}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                >
+                  {uploadingAvatar ? "Uploading..." : "Upload new picture"}
+                </Button>
+                {profile?.avatar_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveAvatar}
+                    disabled={uploadingAvatar}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove picture
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG or WebP. Max 2MB.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Information Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Profile
-            </h2>
-            
-            <div className="form-control mt-4">
-              <label className="label">
-                <span className="label-text">Full Name</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered"
+              Profile Information
+            </CardTitle>
+            <CardDescription>
+              Update your personal information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Your name"
               />
             </div>
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
-            <div className="form-control mt-4">
-              <label className="label">
-                <span className="label-text">Email</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-base-content/70" />
-                <span className="text-base-content/70">{user.email}</span>
+        {/* Email Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Address
+            </CardTitle>
+            <CardDescription>
+              Change your email address. You'll need to verify the new email.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentEmail">Current Email</Label>
+              <Input
+                id="currentEmail"
+                value={user.email || ""}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">New Email</Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="new@email.com"
+              />
+            </div>
+            <Button 
+              onClick={handleChangeEmail} 
+              disabled={changingEmail || newEmail === user.email}
+              variant="outline"
+            >
+              {changingEmail ? "Sending..." : "Change Email"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Password Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your password to keep your account secure
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={changingPassword}
+              variant="outline"
+            >
+              {changingPassword ? "Updating..." : "Update Password"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Security Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Security
+            </CardTitle>
+            <CardDescription>
+              Manage your account security settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Sign out all devices</p>
+                <p className="text-sm text-muted-foreground">
+                  This will sign you out from all devices including this one
+                </p>
               </div>
-              <label className="label">
-                <span className="label-text-alt text-base-content/50">
-                  Email cannot be changed
-                </span>
-              </label>
+              <Button variant="outline" onClick={handleSignOutAllDevices}>
+                <Key className="h-4 w-4 mr-2" />
+                Sign Out All
+              </Button>
             </div>
-
-            <div className="card-actions justify-end mt-4">
-              <button 
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <span className="loading loading-spinner loading-sm"></span>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </button>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Account ID</p>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {user.id}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Last Sign In</p>
+                <p className="text-sm text-muted-foreground">
+                  {user.last_sign_in_at 
+                    ? new Date(user.last_sign_in_at).toLocaleString() 
+                    : 'Unknown'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Account Section */}
-        <div className="card bg-base-200">
-          <div className="card-body">
-            <h2 className="card-title text-error">Danger Zone</h2>
-            <p className="text-base-content/70">
-              Once you delete your account, there is no going back. Please be certain.
-            </p>
-            <div className="card-actions justify-end mt-4">
-              <button className="btn btn-error btn-outline" disabled>
+        {/* Danger Zone */}
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>
+              Irreversible actions that affect your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Delete Account</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete your account and all associated data
+                </p>
+              </div>
+              <Button variant="destructive" disabled>
                 Delete Account
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
