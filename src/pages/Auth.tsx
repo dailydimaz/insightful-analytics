@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Loader2, Shield } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -22,22 +22,45 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // MFA state
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [verifyingMfa, setVerifyingMfa] = useState(false);
+
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/dashboard");
+        checkMfaRequired(session);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/dashboard");
+      if (session && !showMfaChallenge) {
+        checkMfaRequired(session);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, showMfaChallenge]);
+
+  const checkMfaRequired = async (session: any) => {
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const verifiedFactors = factorsData?.totp?.filter(f => f.status === 'verified') || [];
+    
+    if (verifiedFactors.length > 0) {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      
+      if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+        setMfaFactorId(verifiedFactors[0].id);
+        setShowMfaChallenge(true);
+        return;
+      }
+    }
+    
+    navigate("/dashboard");
+  };
 
   const validateForm = () => {
     try {
@@ -97,7 +120,7 @@ export default function Auth() {
           });
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -112,6 +135,8 @@ export default function Auth() {
           } else {
             throw error;
           }
+        } else if (data.session) {
+          await checkMfaRequired(data.session);
         }
       }
     } catch (error: any) {
@@ -125,9 +150,126 @@ export default function Auth() {
     }
   };
 
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId || mfaCode.length !== 6) return;
+
+    setVerifyingMfa(true);
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: mfaFactorId,
+      });
+
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challengeData.id,
+        code: mfaCode,
+      });
+
+      if (verifyError) throw verifyError;
+
+      toast({
+        title: "Verified",
+        description: "Two-factor authentication successful",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Verification failed",
+        description: error.message || "Invalid code. Please try again.",
+        variant: "destructive",
+      });
+      setMfaCode("");
+    } finally {
+      setVerifyingMfa(false);
+    }
+  };
+
+  if (showMfaChallenge) {
+    return (
+      <div className="min-h-screen flex">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-sm">
+            <Link to="/" className="flex items-center gap-2 mb-8">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                <BarChart3 className="h-4 w-4 text-primary-content" />
+              </div>
+              <span className="font-display text-xl font-bold">Metric</span>
+            </Link>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+                <p className="text-base-content/70 text-sm">
+                  Enter the code from your authenticator app
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleMfaVerify} className="space-y-4">
+              <div className="form-control w-full">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="input input-bordered w-full text-center text-3xl tracking-[0.5em] font-mono"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  autoFocus
+                  disabled={verifyingMfa}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                disabled={verifyingMfa || mfaCode.length !== 6}
+              >
+                {verifyingMfa && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Verify
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowMfaChallenge(false);
+                setMfaCode("");
+                supabase.auth.signOut();
+              }}
+              className="mt-4 text-center text-sm text-base-content/70 hover:text-base-content w-full"
+            >
+              Cancel and sign out
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden lg:flex flex-1 bg-primary/5 items-center justify-center p-8">
+          <div className="max-w-md text-center">
+            <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-primary mb-8">
+              <Shield className="h-10 w-10 text-primary-content" />
+            </div>
+            <h2 className="text-2xl font-bold">Your account is protected</h2>
+            <p className="mt-4 text-base-content/70">
+              Two-factor authentication adds an extra layer of security to your account.
+              Open your authenticator app to get your verification code.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
           <Link to="/" className="flex items-center gap-2 mb-8">
@@ -227,7 +369,6 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* Right side - Visual */}
       <div className="hidden lg:flex flex-1 bg-primary/5 items-center justify-center p-8">
         <div className="max-w-md text-center">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-primary mb-8">

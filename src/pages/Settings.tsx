@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { TwoFactorSetup } from "@/components/settings/TwoFactorSetup";
 
 interface Profile {
   id: string;
@@ -543,6 +544,9 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Two-Factor Authentication */}
+        <TwoFactorSetup />
 
         {/* Security Section */}
         <Card>
