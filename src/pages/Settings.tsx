@@ -4,13 +4,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Save, Lock, Camera, Trash2, Shield, Key } from "lucide-react";
+import { User, Mail, Save, Lock, Camera, Trash2, Shield, Key, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Profile {
   id: string;
@@ -40,6 +51,8 @@ export default function Settings() {
   // Action states
   const [changingEmail, setChangingEmail] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -283,6 +296,54 @@ export default function Settings() {
       });
     } else {
       navigate("/auth");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast({
+        title: "Confirmation required",
+        description: "Please type DELETE to confirm account deletion",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("No active session");
+      }
+
+      const response = await supabase.functions.invoke("delete-account", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to delete account");
+      }
+
+      toast({
+        title: "Account deleted",
+        description: "Your account and all data have been permanently deleted",
+      });
+      
+      // Sign out and redirect
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAccount(false);
+      setDeleteConfirmText("");
     }
   };
 
@@ -532,7 +593,10 @@ export default function Settings() {
         {/* Danger Zone */}
         <Card className="border-destructive/50">
           <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
             <CardDescription>
               Irreversible actions that affect your account
             </CardDescription>
@@ -545,9 +609,65 @@ export default function Settings() {
                   Permanently delete your account and all associated data
                 </p>
               </div>
-              <Button variant="destructive" disabled>
-                Delete Account
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="h-5 w-5" />
+                      Delete Account Permanently
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-4">
+                      <p>
+                        This action cannot be undone. This will permanently delete your
+                        account and remove all your data including:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>All your sites and tracking data</li>
+                        <li>All events, funnels, and goals</li>
+                        <li>Your profile and avatar</li>
+                        <li>All account settings</li>
+                      </ul>
+                      <div className="pt-2">
+                        <Label htmlFor="deleteConfirm" className="text-foreground">
+                          Type <span className="font-bold">DELETE</span> to confirm:
+                        </Label>
+                        <Input
+                          id="deleteConfirm"
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          placeholder="DELETE"
+                          className="mt-2"
+                        />
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      disabled={deletingAccount || deleteConfirmText !== "DELETE"}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deletingAccount ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete Account"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
