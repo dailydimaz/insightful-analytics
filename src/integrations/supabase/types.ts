@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       backup_codes: {
         Row: {
           code_hash: string
@@ -40,6 +76,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      custom_dashboards: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          layout: Json
+          name: string
+          site_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          layout?: Json
+          name: string
+          site_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          layout?: Json
+          name?: string
+          site_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_dashboards_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
@@ -293,6 +370,50 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_integrations: {
+        Row: {
+          channel_name: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          notify_on: Json
+          site_id: string
+          updated_at: string
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          channel_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_on?: Json
+          site_id: string
+          updated_at?: string
+          user_id: string
+          webhook_url: string
+        }
+        Update: {
+          channel_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_on?: Json
+          site_id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_integrations_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -334,6 +455,88 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      team_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          site_id: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          role?: string
+          site_id: string
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: string
+          site_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          role: string
+          site_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          site_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          site_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       usage_records: {
         Row: {
