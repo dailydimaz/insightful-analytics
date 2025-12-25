@@ -17,11 +17,10 @@ import {
   Users,
 } from "lucide-react";
 
-const navItems = [
+// Nav items - some are site-specific, marked with siteSpecific: true
+const getNavItems = (siteId: string | null) => [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
-  { icon: MousePointerClick, label: "Events", href: "/dashboard/events" },
-  { icon: GitBranch, label: "Funnels", href: "/dashboard/funnels" },
-  { icon: Users, label: "Retention", href: "/dashboard/retention" },
+  { icon: MousePointerClick, label: "Analytics", href: siteId ? `/dashboard/sites/${siteId}` : "/dashboard", siteSpecific: true },
 ];
 
 interface DashboardLayoutProps {
@@ -112,7 +111,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Nav Items */}
         <div className="navbar-center hidden md:flex">
           <ul className="menu menu-horizontal px-1">
-            {navItems.map((item) => (
+            {getNavItems(selectedSiteId).map((item) => (
               <li key={item.href}>
                 <Link to={item.href} className="gap-2">
                   <item.icon className="h-4 w-4" />
