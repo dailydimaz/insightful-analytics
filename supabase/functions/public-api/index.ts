@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 };
 
+// Input validation constants
+const MAX_LIMIT = 1000;
+const MAX_OFFSET = 100000;
+const DEFAULT_LIMIT = 100;
+const MAX_TOP_PAGES_LIMIT = 100;
+const DEFAULT_TOP_PAGES_LIMIT = 10;
+const EVENTS_SAFETY_LIMIT = 50000; // Server-side safety limit for top-pages aggregation
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -159,8 +167,24 @@ Deno.serve(async (req) => {
 
         // GET /v1/sites/:siteId/events
         if (action === 'events' && req.method === 'GET') {
-          const limit = parseInt(url.searchParams.get('limit') || '100');
-          const offset = parseInt(url.searchParams.get('offset') || '0');
+          // Parse and validate limit
+          let limit = parseInt(url.searchParams.get('limit') || String(DEFAULT_LIMIT));
+          if (isNaN(limit) || limit < 1) {
+            limit = DEFAULT_LIMIT;
+          } else if (limit > MAX_LIMIT) {
+            limit = MAX_LIMIT;
+          }
+
+          // Parse and validate offset
+          let offset = parseInt(url.searchParams.get('offset') || '0');
+          if (isNaN(offset) || offset < 0) {
+            offset = 0;
+          } else if (offset > MAX_OFFSET) {
+            return new Response(
+              JSON.stringify({ error: `Offset too large, maximum is ${MAX_OFFSET}` }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            );
+          }
 
           const { data: events, error: eventsError, count } = await supabase
             .from('events')
@@ -187,16 +211,25 @@ Deno.serve(async (req) => {
 
         // GET /v1/sites/:siteId/top-pages
         if (action === 'top-pages' && req.method === 'GET') {
-          const limit = parseInt(url.searchParams.get('limit') || '10');
+          // Parse and validate limit
+          let limit = parseInt(url.searchParams.get('limit') || String(DEFAULT_TOP_PAGES_LIMIT));
+          if (isNaN(limit) || limit < 1) {
+            limit = DEFAULT_TOP_PAGES_LIMIT;
+          } else if (limit > MAX_TOP_PAGES_LIMIT) {
+            limit = MAX_TOP_PAGES_LIMIT;
+          }
+
           const startDate = url.searchParams.get('start_date') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+          // Apply server-side safety limit to prevent memory exhaustion
           const { data: events, error } = await supabase
             .from('events')
             .select('url')
             .eq('site_id', siteId)
             .eq('event_name', 'pageview')
             .gte('created_at', startDate)
-            .not('url', 'is', null);
+            .not('url', 'is', null)
+            .limit(EVENTS_SAFETY_LIMIT);
 
           if (error) throw error;
 
@@ -214,7 +247,14 @@ Deno.serve(async (req) => {
             .map(([url, views]) => ({ url, views }));
 
           return new Response(
-            JSON.stringify({ data: topPages }),
+            JSON.stringify({ 
+              data: topPages,
+              meta: {
+                limit,
+                events_analyzed: events?.length || 0,
+                events_capped: (events?.length || 0) >= EVENTS_SAFETY_LIMIT,
+              }
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
