@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+// Slack webhook URL validation regex (matches official Slack webhook format)
+const SLACK_WEBHOOK_REGEX = /^https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+$/;
+
+export function isValidSlackWebhookUrl(url: string): boolean {
+  return SLACK_WEBHOOK_REGEX.test(url);
+}
+
 interface SlackNotifySettings {
   daily_digest: boolean;
   weekly_digest: boolean;
@@ -65,6 +72,11 @@ export function useSlackIntegration(siteId: string | undefined) {
       notifyOn?: Partial<SlackNotifySettings>;
     }) => {
       if (!user || !siteId) throw new Error('Not authenticated or no site selected');
+
+      // Server-side validation of webhook URL
+      if (!isValidSlackWebhookUrl(webhookUrl)) {
+        throw new Error('Invalid Slack webhook URL format. URL must be a valid Slack incoming webhook URL.');
+      }
 
       const defaultNotifyOn: SlackNotifySettings = {
         daily_digest: true,

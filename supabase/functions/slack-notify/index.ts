@@ -10,6 +10,65 @@ interface SlackMessage {
   blocks?: any[];
 }
 
+// Validate Slack webhook URL format (server-side validation)
+const SLACK_WEBHOOK_REGEX = /^https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+$/;
+
+function isValidSlackWebhookUrl(url: string): boolean {
+  return SLACK_WEBHOOK_REGEX.test(url);
+}
+
+// Extract user ID from Authorization header
+async function getUserIdFromRequest(req: Request, supabase: any): Promise<string | null> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) {
+    console.error('Error getting user from token:', error);
+    return null;
+  }
+  
+  return user.id;
+}
+
+// Check if user has access to the site (owner or team member)
+async function userHasSiteAccess(supabase: any, userId: string, siteId: string): Promise<boolean> {
+  // Check if user owns the site
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('user_id')
+    .eq('id', siteId)
+    .single();
+
+  if (siteError) {
+    console.error('Error checking site ownership:', siteError);
+    return false;
+  }
+
+  if (site?.user_id === userId) {
+    return true;
+  }
+
+  // Check if user is a team member
+  const { data: teamMember, error: memberError } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('site_id', siteId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (memberError) {
+    console.error('Error checking team membership:', memberError);
+    return false;
+  }
+
+  return !!teamMember;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -19,7 +78,26 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create service role client for database operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Create anon client for auth verification
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Verify user authentication
+    const userId = await getUserIdFromRequest(req, supabaseAuth);
+    if (!userId) {
+      console.error('Unauthorized: No valid user token');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Authentication required' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        }
+      );
+    }
 
     const { siteId, test, type, data } = await req.json();
 
@@ -27,8 +105,27 @@ Deno.serve(async (req) => {
       throw new Error('Site ID is required');
     }
 
+    // Validate siteId format (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(siteId)) {
+      throw new Error('Invalid site ID format');
+    }
+
+    // Authorization check: verify user has access to this site
+    const hasAccess = await userHasSiteAccess(supabaseAdmin, userId, siteId);
+    if (!hasAccess) {
+      console.error(`Unauthorized: User ${userId} does not have access to site ${siteId}`);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: You do not have access to this site' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        }
+      );
+    }
+
     // Get the Slack integration for this site
-    const { data: integration, error: integrationError } = await supabase
+    const { data: integration, error: integrationError } = await supabaseAdmin
       .from('slack_integrations')
       .select('*')
       .eq('site_id', siteId)
@@ -44,8 +141,14 @@ Deno.serve(async (req) => {
       throw new Error('No active Slack integration found for this site');
     }
 
+    // Server-side webhook URL validation
+    if (!isValidSlackWebhookUrl(integration.webhook_url)) {
+      console.error('Invalid webhook URL detected:', integration.webhook_url.substring(0, 30) + '...');
+      throw new Error('Invalid Slack webhook URL format');
+    }
+
     // Get site info
-    const { data: site } = await supabase
+    const { data: site } = await supabaseAdmin
       .from('sites')
       .select('name, domain')
       .eq('id', siteId)
@@ -136,6 +239,7 @@ Deno.serve(async (req) => {
     }
 
     // Send to Slack
+    console.log(`Sending Slack notification for site ${siteId}, type: ${test ? 'test' : type}`);
     const slackResponse = await fetch(integration.webhook_url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
