@@ -78,16 +78,15 @@ function parseUserAgent(ua: string): { browser: string; os: string; device_type:
   return { browser, os, device_type };
 }
 
-// Generate a simple hash for visitor fingerprinting
-function generateVisitorId(ip: string, ua: string): string {
+// Generate a cryptographic hash for visitor fingerprinting using SHA-256
+async function generateVisitorId(ip: string, ua: string): Promise<string> {
   const str = `${ip}-${ua}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(36);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  // Use first 16 hex characters for a unique 64-bit identifier
+  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {
@@ -186,8 +185,11 @@ serve(async (req) => {
     // Parse user agent
     const { browser, os, device_type } = parseUserAgent(userAgent);
 
-    // Generate visitor and session IDs
-    const visitor_id = generateVisitorId(clientIp, userAgent);
+    // Get request origin for validation
+    const origin = req.headers.get('origin');
+
+    // Generate visitor and session IDs (now async with crypto)
+    const visitor_id = await generateVisitorId(clientIp, userAgent);
     const session_id = body.session_id || `${visitor_id}-${Date.now()}`;
 
     // Create Supabase client
@@ -195,10 +197,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // First verify the site exists
+    // First verify the site exists and get domain for origin validation
     const { data: site, error: siteError } = await supabase
       .from('sites')
-      .select('id')
+      .select('id, domain')
       .eq('tracking_id', site_id)
       .maybeSingle();
 
@@ -215,6 +217,30 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Validate origin matches site domain (if domain is configured and origin is present)
+    if (origin && site.domain) {
+      try {
+        const originHost = new URL(origin).hostname.toLowerCase();
+        const siteDomain = site.domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '');
+        
+        // Check if origin matches the configured domain (with or without www)
+        const isValidOrigin = originHost === siteDomain || 
+                              originHost === `www.${siteDomain}` ||
+                              originHost.endsWith(`.${siteDomain}`);
+        
+        if (!isValidOrigin) {
+          console.warn(`Origin mismatch: ${origin} vs ${site.domain} for site ${site_id}`);
+          return new Response(JSON.stringify({ error: 'Invalid origin' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (e) {
+        // If URL parsing fails, log but allow (could be server-side request)
+        console.warn(`Could not parse origin: ${origin}`);
+      }
     }
 
     // Insert the event
