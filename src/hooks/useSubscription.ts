@@ -20,32 +20,9 @@ interface Subscription {
 export function useSubscription() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const selfHosted = isSelfHosted();
 
-  // If self-hosted, return unlimited plan
-  if (isSelfHosted()) {
-    return {
-      subscription: {
-        id: 'self-hosted',
-        user_id: user?.id || '',
-        stripe_customer_id: null,
-        stripe_subscription_id: null,
-        plan: 'selfhosted' as PlanType,
-        status: 'active',
-        current_period_start: null,
-        current_period_end: null,
-        cancel_at_period_end: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as Subscription,
-      plan: PLANS.selfhosted,
-      isLoading: false,
-      isSelfHosted: true,
-      billingEnabled: false,
-      createSubscription: { mutateAsync: async () => {}, isPending: false },
-      cancelSubscription: { mutateAsync: async () => {}, isPending: false },
-    };
-  }
-
+  // Always call hooks unconditionally to follow React Rules of Hooks
   const subscriptionQuery = useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async () => {
@@ -77,15 +54,13 @@ export function useSubscription() {
 
       return data as Subscription;
     },
-    enabled: !!user,
+    enabled: !!user && !selfHosted, // Disable for self-hosted
   });
 
   const createSubscription = useMutation({
     mutationFn: async (plan: PlanType) => {
       if (!user) throw new Error('Not authenticated');
       
-      // In a real implementation, this would call a Stripe checkout edge function
-      // For now, we'll just update the subscription directly
       const { data, error } = await supabase
         .from('subscriptions')
         .upsert({
@@ -122,6 +97,31 @@ export function useSubscription() {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
   });
+
+  // Return self-hosted config after all hooks are called
+  if (selfHosted) {
+    return {
+      subscription: {
+        id: 'self-hosted',
+        user_id: user?.id || '',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        plan: 'selfhosted' as PlanType,
+        status: 'active',
+        current_period_start: null,
+        current_period_end: null,
+        cancel_at_period_end: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Subscription,
+      plan: PLANS.selfhosted,
+      isLoading: false,
+      isSelfHosted: true,
+      billingEnabled: false,
+      createSubscription,
+      cancelSubscription,
+    };
+  }
 
   const subscription = subscriptionQuery.data;
   const planKey = (subscription?.plan || 'free') as PlanType;
